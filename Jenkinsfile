@@ -1,17 +1,25 @@
 pipeline {
     agent any
     stages {
-        stage('Deploy HTML') {
+        stage('Deploy Website') {
             steps {
-                sshagent(['apache-deploy-key']) { // Use the correct SSH credentials ID
+                sshagent(['apache-deploy-key']) {
                     script {
-                        echo 'Deploying index.html to remote Apache server...'
+                        echo 'Deploying website files to remote Apache server...'
                         
-                        // Add the server's SSH key to known hosts
-                        sh 'ssh-keyscan -H 13.51.235.84>> ~/.ssh/known_hosts'
+                        sh 'ssh-keyscan -H 13.51.235.84 >> ~/.ssh/known_hosts'
                         
-                        // Copy the file to the remote server using SCP
-                        sh 'scp index.html ubuntu@13.51.235.84:/var/www/html/'
+                        // Copy HTML, CSS, and JS files
+                        sh '''
+                        scp index.html ubuntu@13.51.235.84:/var/www/html/
+                        scp styles.css ubuntu@13.51.235.84:/var/www/html/
+                        scp script.js ubuntu@13.51.235.84:/var/www/html/
+                        '''
+                        
+                        // Ensure proper permissions
+                        sh '''
+                        ssh ubuntu@13.49.72.39 "sudo chown www-data:www-data /var/www/html/* && sudo chmod 644 /var/www/html/*"
+                        '''
                     }
                 }
             }
@@ -19,9 +27,7 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 script {
-                    echo 'Verifying index.html deployment on remote server...'
-                    
-                    // Verify the file is served correctly using curl
+                    echo 'Verifying deployment on remote server...'
                     sh 'curl http://13.51.235.84/index.html'
                 }
             }
