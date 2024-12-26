@@ -1,44 +1,63 @@
 pipeline {
     agent any
+
+    environment {
+        REMOTE_HOST = '13.49.72.39' // Replace with your Apache server IP
+        DEPLOY_USER = 'ubuntu'      // Replace with your deployment user
+        REMOTE_PATH = '/var/www/html/' // Path to deploy files on the server
+    }
+
     stages {
-        stage('Deploy Website') {
+        stage('Checkout Code') {
             steps {
-                sshagent(['apache-deploy-key']) {
-                    script {
-                        echo 'Deploying website files to remote Apache server...'
-                        
-                        sh 'ssh-keyscan -H 13.51.235.84 >> ~/.ssh/known_hosts'
-                        
-                        // Copy HTML, CSS, and JS files
-                        sh '''
-                        scp index.html ubuntu@13.51.235.84:/var/www/html/
-                        scp styles.css ubuntu@13.51.235.84:/var/www/html/
-                        scp script.js ubuntu@13.51.235.84:/var/www/html/
-                        '''
-                        
-                        // Ensure proper permissions
-                        sh '''
-                        ssh ubuntu@13.49.72.39 "sudo chown www-data:www-data /var/www/html/* && sudo chmod 644 /var/www/html/*"
-                        '''
-                    }
+                checkout scm
+            }
+        }
+
+        stage('Prepare Deployment') {
+            steps {
+                script {
+                    // Ensure the known_hosts file is updated with the correct host key
+                    sh """
+                    ssh-keygen -R ${REMOTE_HOST} || true
+                    ssh-keyscan -H ${REMOTE_HOST} >> /var/lib/jenkins/.ssh/known_hosts
+                    """
                 }
             }
         }
+
+        stage('Deploy Website') {
+            steps {
+                sshagent(['apache-deploy-key']) { // Replace with your SSH credential ID
+                    sh """
+                    echo "Deploying website files to ${REMOTE_HOST}..."
+                    scp index.html ${DEPLOY_USER}@${REMOTE_HOST}:${REMOTE_PATH}
+                    scp styles.css ${DEPLOY_USER}@${REMOTE_HOST}:${REMOTE_PATH}
+                    scp script.js ${DEPLOY_USER}@${REMOTE_HOST}:${REMOTE_PATH}
+                    ssh ${DEPLOY_USER}@${REMOTE_HOST} "sudo chown www-data:www-data ${REMOTE_PATH}* && sudo chmod 644 ${REMOTE_PATH}*"
+                    """
+                }
+            }
+        }
+
         stage('Verify Deployment') {
             steps {
-                script {
-                    echo 'Verifying deployment on remote server...'
-                    sh 'curl http://13.51.235.84/index.html'
+                sshagent(['apache-deploy-key']) {
+                    sh """
+                    echo "Verifying deployment..."
+                    ssh ${DEPLOY_USER}@${REMOTE_HOST} "ls -l ${REMOTE_PATH}"
+                    """
                 }
             }
         }
     }
+
     post {
         success {
             echo 'Deployment completed successfully!'
         }
         failure {
-            echo 'Deployment failed. Check the logs for more details.'
+            echo 'Deployment failed. Please check the logs for details.'
         }
     }
 }
