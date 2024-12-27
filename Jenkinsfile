@@ -26,19 +26,20 @@ pipeline {
             }
         }
 
-        stage('Deploy Website') {
-            steps {
-                sshagent(['apache-deploy-key']) { // Replace with your SSH credential ID
-                    sh """
-                    echo "Deploying website files to ${REMOTE_HOST}..."
-                    scp index.html ${DEPLOY_USER}@${REMOTE_HOST}:${REMOTE_PATH}
-                    scp styles.css ${DEPLOY_USER}@${REMOTE_HOST}:${REMOTE_PATH}
-                    scp script.js ${DEPLOY_USER}@${REMOTE_HOST}:${REMOTE_PATH}
-                    ssh ${DEPLOY_USER}@${REMOTE_HOST} "sudo chown www-data:www-data ${REMOTE_PATH}* && sudo chmod 644 ${REMOTE_PATH}*"
-                    """
-                }
-            }
+stage('Deploy Website') {
+    steps {
+        sshagent(['apache-deploy-key']) { // Replace with your SSH credential ID
+            sh """
+            echo "Deploying website files to ${REMOTE_HOST}..."
+            scp index.html ${DEPLOY_USER}@${REMOTE_HOST}:${REMOTE_PATH}/temp_index.html
+            scp styles.css ${DEPLOY_USER}@${REMOTE_HOST}:${REMOTE_PATH}/temp_styles.css
+            scp script.js ${DEPLOY_USER}@${REMOTE_HOST}:${REMOTE_PATH}/temp_script.js
+            ssh ${DEPLOY_USER}@${REMOTE_HOST} "sudo mv ${REMOTE_PATH}/temp_index.html ${REMOTE_PATH}/index.html && sudo mv ${REMOTE_PATH}/temp_styles.css ${REMOTE_PATH}/styles.css && sudo mv ${REMOTE_PATH}/temp_script.js ${REMOTE_PATH}/script.js && sudo chown www-data:www-data ${REMOTE_PATH}* && sudo chmod 644 ${REMOTE_PATH}*"
+            """
         }
+    }
+}
+
 
         stage('Verify Deployment') {
             steps {
