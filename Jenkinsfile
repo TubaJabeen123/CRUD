@@ -2,26 +2,27 @@ pipeline {
     agent any
 
     environment {
-        REMOTE_HOST = '13.51.235.84' // Replace with your Apache server IP
-        DEPLOY_USER = 'ubuntu'      // Replace with your deployment user
-        REMOTE_PATH = '/var/www/html/' // Path to deploy files on the server
+        REMOTE_HOST = '13.51.235.84'
+        DEPLOY_USER = 'ubuntu'
+        REMOTE_PATH = '/var/www/html/'
     }
 
     stages {
         stage('Deploy Website Files') {
             steps {
-                sshagent(['apache-deploy-key']) { // Replace with your SSH credential ID
+                sshagent(['apache-deploy-key']) {
                     script {
                         echo 'Deploying website files to the remote Apache server...'
                         
                         // Add the server's SSH key to known_hosts
                         sh "ssh-keyscan -H ${REMOTE_HOST} >> ~/.ssh/known_hosts"
 
-                        // Copy all files to the remote server
+                        // Copy files to a temporary directory and move them using sudo
                         sh """
-                        scp index.html ${DEPLOY_USER}@${REMOTE_HOST}:${REMOTE_PATH}
-                        scp styles.css ${DEPLOY_USER}@${REMOTE_HOST}:${REMOTE_PATH}
-                        scp script.js ${DEPLOY_USER}@${REMOTE_HOST}:${REMOTE_PATH}
+                        scp index.html ${DEPLOY_USER}@${REMOTE_HOST}:/tmp/
+                        scp styles.css ${DEPLOY_USER}@${REMOTE_HOST}:/tmp/
+                        scp script.js ${DEPLOY_USER}@${REMOTE_HOST}:/tmp/
+                        ssh ${DEPLOY_USER}@${REMOTE_HOST} "sudo mv /tmp/index.html ${REMOTE_PATH} && sudo mv /tmp/styles.css ${REMOTE_PATH} && sudo mv /tmp/script.js ${REMOTE_PATH}"
                         """
                     }
                 }
@@ -53,7 +54,6 @@ pipeline {
         }
     }
 }
-
 
 
 
